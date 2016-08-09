@@ -1,74 +1,42 @@
 import numpy as np
+import dataio as dio
+import rnn
+from datetime import datetime
+import utils
 
+TRAIN = True
+train_data = dio.get_train_data()
+rand_data = train_data.copy()
+train_label = dio.get_train_gt()
 
-def save_model_parameters_theano(outfile, model):
-    U, V, W,W1 = model.U.get_value(), model.V.get_value(), model.W.get_value(),model.W1.get_value()
-    np.savez(outfile, U=U, V=V, W=W,W1=W1)
-    print "Saved model parameters to %s." % outfile
+test_data = dio.get_test_data()
+test_label = dio.get_test_gt()
 
+mean_ = np.mean(train_data, axis=0)
+rand_data -= mean_
 
-def load_model_parameters_theano(path, model):
-    npzfile = np.load(path)
-    U, V, W, W1 = npzfile["U"], npzfile["V"], npzfile["W"], npzfile["W1"]
-    model.U.set_value(U)
-    model.V.set_value(V)
-    model.W.set_value(W)
-    model.W1.set_value(W1)
-    print "Loaded model parameters from %s. succuse!" % (path)
+model = rnn.RNNTheano()
+if TRAIN:
+    EPOCH  = 20
+    n = train_data.shape[0] / model.batch_size
+    j = 0
+    for it in xrange(EPOCH):
+        np.random.shuffle(rand_data)
+        for i in xrange(n):
+            dt = rand_data[i*model.batch_size:(i+1)*model.batch_size]
+            rt = model.sgd_step(dt)
+            time = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+            print("%s  iterators :%6d, loss : %f  " % (time, j, rt[0]))
+            j += 1
 
-
-def cat_map(train_data_code,train_label,pre_code,pre_label,N=500):
-    size = pre_code.shape[0]
-    sim = np.dot(train_data_code, np.transpose(pre_code))
-    inx = np.argsort(-sim, 0)
-    inx = inx[:N]
-    lab = np.array(train_label)
-    pre_label = np.array(pre_label)
-    nn_lab = lab[inx]
-    apall = 0
-    for i in range(size):
-        x=0
-        p=0
-        new_label = nn_lab[:,i]
-        for j in range(N):
-            if new_label[j]==pre_label[i]:
-                x = x + 1
-                p = p + x*1./(j+1)
-        if x:
-            apall += p/x
-    return apall/size
-
-
-def get_pre(train_data_code,train_label,pre_code,pre_label,N=1000):
-    size = pre_code.shape[0]
-    sim = np.dot(train_data_code,np.transpose(pre_code))
-    inx = np.argsort(-sim,0)
-    inx = inx[:N]
-    lab = np.array(train_label)
-    pre_label = np.array(pre_label)
-    nn_lab = lab[inx]
-    pre = 0.
-    for i in range(size):
-        pre = pre + np.sum(nn_lab[:,i]==pre_label[i])*1./N
-
-
-def num2bit(data):
-    if len(data.shape) == 1:
-        data = np.array([data])
-    data = data.transpose()
-    ret = []
-    for i in data:
-        t = []
-        for j in i:
-            for k in xrange(3):
-                #fetch each bit from right to left
-                a = (j>>(2-k))&1
-                if a==0:
-                    a= -1.
-
-                t.append(a)
-        ret.append(t)
-    return np.array(ret)
-
-
-
+    utils.save_model_parameters_theano('models/models.npz',model)
+utils.load_model_parameters_theano('models/models.npz',model)
+d = train_data - mean_
+p = model.predict(d)
+B = utils.num2bit(p)
+test_data -= mean_
+query = model.predict(test_data)
+query_b = utils.num2bit(query)
+print query_b[:10]
+print "start calculate map ..."
+print utils.cat_map(B,train_label,query_b,test_label)
