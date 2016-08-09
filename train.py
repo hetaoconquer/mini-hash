@@ -1,6 +1,7 @@
 import numpy as np
 import dataio as dio
 import rnn
+import  os
 from datetime import datetime
 import utils
 
@@ -17,7 +18,7 @@ rand_data -= mean_
 
 model = rnn.RNNTheano()
 if TRAIN:
-    EPOCH  = 20
+    EPOCH  = 1
     n = train_data.shape[0] / model.batch_size
     j = 0
     for it in xrange(EPOCH):
@@ -28,7 +29,8 @@ if TRAIN:
             time = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
             print("%s  iterators :%6d, loss : %f  " % (time, j, rt[0]))
             j += 1
-
+    if os.path.exists('models')==False:
+        os.makedirs("models")
     utils.save_model_parameters_theano('models/models.npz',model)
 utils.load_model_parameters_theano('models/models.npz',model)
 d = train_data - mean_
