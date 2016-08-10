@@ -39,6 +39,5 @@ B = utils.num2bit(p)
 test_data -= mean_
 query = model.predict(test_data)
 query_b = utils.num2bit(query)
-print query_b[:10]
 print "start calculate map ..."
 print utils.cat_map(B,train_label,query_b,test_label)
