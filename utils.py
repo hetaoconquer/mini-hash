@@ -65,7 +65,6 @@ def num2bit(data):
                 a = (j>>(2-k))&1
                 if a==0:
                     a= -1.
-
                 t.append(a)
         ret.append(t)
     return np.array(ret)
